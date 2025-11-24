@@ -1,0 +1,99 @@
+<!doctype html>
+<html lang="en">
+<head>
+	<meta charset="utf-8">
+	<meta name="viewport" content="width=device-width,initial-scale=1">
+	<title>MediBot Chat</title>
+	<link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+	<!-- Fallback when opening this file directly via file:// — replaced only if template not rendered -->
+	<script>
+		(function(){
+			try{
+				const link = document.querySelector('link[rel="stylesheet"]');
+				if(link && link.getAttribute('href') && link.getAttribute('href').includes('{')){
+					// replace with a relative path to the static folder for quick local testing
+					link.setAttribute('href','../static/style.css');
+				}
+			}catch(e){/* noop */}
+		})();
+	</script>
+</head>
+<body>
+	<main class="chat-app">
+		<header class="chat-header">
+			<div class="title">MediBot</div>
+			<button id="theme-toggle" class="theme-toggle" aria-label="Toggle light and dark mode">
+				<span class="icon sun">☀️</span>
+				<span class="icon moon">🌙</span>
+			</button>
+		</header>
+
+		<section id="messages" class="messages" aria-live="polite">
+			{% if messages %}
+				{% for message in messages %}
+					{% if message.role == 'user' %}
+						<div class="message-row user">
+							<div class="bubble">{{ message.text }}</div>
+						</div>
+					{% else %}
+						<div class="message-row bot">
+							<div class="bubble">{{ message.text }}</div>
+						</div>
+					{% endif %}
+				{% endfor %}
+			{% else %}
+				<div class="empty">Start the conversation — ask MediBot a question.</div>
+			{% endif %}
+		</section>
+
+		<form class="composer" method="POST" action="/" autocomplete="off">
+			<textarea name="user_input" id="user_input" class="input" placeholder="Type a message..." rows="1" required></textarea>
+			<button type="submit" class="send" aria-label="Send message">Send</button>
+		</form>
+	</main>
+
+	<script>
+		// Theme toggle and persistence
+		const body = document.body;
+		const toggle = document.getElementById('theme-toggle');
+		const storageKey = 'medibot-theme';
+
+		function applyTheme(mode) {
+			if (mode === 'dark') body.classList.add('dark-mode');
+			else body.classList.remove('dark-mode');
+		}
+
+		// initialize
+		let theme = localStorage.getItem(storageKey) || (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+		applyTheme(theme);
+
+		toggle.addEventListener('click', () => {
+			theme = body.classList.contains('dark-mode') ? 'light' : 'dark';
+			applyTheme(theme);
+			localStorage.setItem(storageKey, theme);
+		});
+
+		// Auto-resize textarea
+		const textarea = document.getElementById('user_input');
+		function resize() {
+			textarea.style.height = 'auto';
+			textarea.style.height = textarea.scrollHeight + 'px';
+		}
+		textarea.addEventListener('input', resize);
+		window.addEventListener('load', resize);
+
+		// Auto-scroll messages to bottom when new nodes are added
+		const messages = document.getElementById('messages');
+		function scrollToBottom() {
+			messages.scrollTop = messages.scrollHeight;
+		}
+
+		// Scroll on load (if any messages)
+		window.addEventListener('load', () => setTimeout(scrollToBottom, 50));
+
+		// Observe for dynamic changes (if backend pushes new content via re-rendering or JS)
+		const observer = new MutationObserver(() => scrollToBottom());
+		observer.observe(messages, { childList: true, subtree: true });
+	</script>
+</body>
+</html>

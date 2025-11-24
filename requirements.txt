@@ -8,4 +8,9 @@ langchain-pinecone
 langchain_community
 langchain_openai
 langchain_experimental
+langchain-text-splitters  
+huggingface-hub<0.26.0    
+langchain-classic      
+transformers              
+torch
 -e .
