@@ -50,15 +50,34 @@ def index():
     return render_template("chat.html")
 
 
+# @app.route("/get",methods=["GET","POST"])
+# def chat():
+#     msg=request.form["user_input"]
+#     input=msg
+#     print(input)
+#     response=rag_chain.invoke({"input":msg})
+#     print("Response:",response["answer"])
+#     return str(response["answer"])
+
 @app.route("/get",methods=["GET","POST"])
 def chat():
-    msg=request.form["msg"]
+    # CHANGE 1: Use .get() to safely retrieve the form data. 
+    # This returns None if the field is missing, preventing the KeyError.
+    msg = request.form.get("user_input")
+    
+    # CHANGE 2: Add a check to return a graceful response if the message is empty.
+    if not msg:
+        # A 400 status indicates a client-side error (bad request)
+        return jsonify({"response": "Error: Please enter a message."}), 400 
+
     input=msg
     print(input)
     response=rag_chain.invoke({"input":msg})
     print("Response:",response["answer"])
-    return str(response["answer"])
-
+    
+    # CHANGE 3: The frontend needs JSON data for easy updates, not just a string.
+    # Return a JSON object with the response and status code 200 (OK).
+    return jsonify({"response": response["answer"]}), 200
 
 
 

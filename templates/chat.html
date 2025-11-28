@@ -46,7 +46,7 @@
 			{% endif %}
 		</section>
 
-		<form class="composer" method="POST" action="/" autocomplete="off">
+		<form class="composer" method="POST" action="/get" autocomplete="off">
 			<textarea name="user_input" id="user_input" class="input" placeholder="Type a message..." rows="1" required></textarea>
 			<button type="submit" class="send" aria-label="Send message">Send</button>
 		</form>
@@ -94,6 +94,73 @@
 		// Observe for dynamic changes (if backend pushes new content via re-rendering or JS)
 		const observer = new MutationObserver(() => scrollToBottom());
 		observer.observe(messages, { childList: true, subtree: true });
+
+		const form = document.querySelector('.composer');
+        const inputField = document.getElementById('user_input');
+        
+        // Helper function to create a new message bubble in the DOM
+        function createMessageElement(text, role) {
+            const row = document.createElement('div');
+            row.className = `message-row ${role}`;
+            const bubble = document.createElement('div');
+            bubble.className = 'bubble';
+            bubble.textContent = text;
+            row.appendChild(bubble);
+            return row;
+        }
+
+        async function handleFormSubmission(event) {
+            // CHANGE 4: PREVENT the default page refresh
+            event.preventDefault(); 
+
+            const userInput = inputField.value.trim();
+
+            if (!userInput) return; // Prevent submission of empty messages
+
+            // 1. Display user message immediately
+            messages.appendChild(createMessageElement(userInput, 'user'));
+            inputField.value = ''; // Clear input field
+
+            // Add a temporary 'typing...' message
+            const botThinking = createMessageElement('MediBot is typing...', 'bot');
+            botThinking.id = 'thinking';
+            messages.appendChild(botThinking);
+            scrollToBottom(); 
+            
+            // 2. Send data to Flask backend
+            const formData = new FormData();
+            // CHANGE 5: Append the data with the correct key: "user_input"
+            formData.append('user_input', userInput); 
+
+            try {
+                const response = await fetch('/get', {
+                    method: 'POST',
+                    body: formData // Fetch handles Content-Type for FormData
+                });
+
+                // 3. Process the response
+                const result = await response.json();
+                
+                // Remove the 'thinking' message
+                document.getElementById('thinking').remove();
+
+                if (response.ok) {
+                    messages.appendChild(createMessageElement(result.response, 'bot'));
+                } else {
+                    // Handle error state (e.g., 400 error from app.py)
+                    messages.appendChild(createMessageElement('Error: ' + result.response, 'bot'));
+                }
+                
+            } catch (error) {
+                console.error('Fetch error:', error);
+                document.getElementById('thinking').remove();
+                messages.appendChild(createMessageElement('A network error occurred.', 'bot'));
+            }
+            scrollToBottom();
+        }
+
+        // CHANGE 6: Attach the new submission handler
+        form.addEventListener('submit', handleFormSubmission);
 	</script>
 </body>
 </html>
