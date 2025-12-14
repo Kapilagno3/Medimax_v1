@@ -3,7 +3,7 @@
 <head>
 	<meta charset="utf-8">
 	<meta name="viewport" content="width=device-width,initial-scale=1">
-	<title>MediBot Chat</title>
+	<title>Medimax Chat</title>
 	<link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
 	<!-- Fallback when opening this file directly via file:// — replaced only if template not rendered -->
 	<script>
@@ -21,7 +21,7 @@
 <body>
 	<main class="chat-app">
 		<header class="chat-header">
-			<div class="title">MediBot</div>
+			<div class="title">Medimax</div>
 			<button id="theme-toggle" class="theme-toggle" aria-label="Toggle light and dark mode">
 				<span class="icon sun">☀️</span>
 				<span class="icon moon">🌙</span>
@@ -42,7 +42,7 @@
 					{% endif %}
 				{% endfor %}
 			{% else %}
-				<div class="empty">Start the conversation — ask MediBot a question.</div>
+				<div class="empty">Start the conversation — ask Medimax a question.</div>
 			{% endif %}
 		</section>
 
@@ -122,7 +122,7 @@
             inputField.value = ''; // Clear input field
 
             // Add a temporary 'typing...' message
-            const botThinking = createMessageElement('MediBot is typing...', 'bot');
+            const botThinking = createMessageElement('Medimax is typing...', 'bot');
             botThinking.id = 'thinking';
             messages.appendChild(botThinking);
             scrollToBottom(); 
