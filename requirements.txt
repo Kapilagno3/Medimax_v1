@@ -14,3 +14,4 @@ langchain-classic
 transformers              
 torch
 -e .
+gunicorn>=20.1.0
