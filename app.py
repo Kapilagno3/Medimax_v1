@@ -1,4 +1,5 @@
 from flask import Flask,render_template,jsonify,request
+from threading import Thread
 from src.helper import download_hugging_face_embeddings
 from langchain_pinecone import Pinecone
 from langchain_openai import OpenAI
@@ -57,6 +58,17 @@ def init_rag():
     rag_chain = create_retrieval_chain(retirver, question_answer_chain)
 
 
+# Start initialization in background so the web server can bind quickly
+def _bg_init():
+    try:
+        init_rag()
+        app.logger.info("RAG initialization completed")
+    except Exception:
+        app.logger.exception("RAG initialization failed")
+
+Thread(target=_bg_init, daemon=True).start()
+
+
 @app.route("/")
 def index():
     return render_template("chat.html")
@@ -82,17 +94,36 @@ def chat():
         # A 400 status indicates a client-side error (bad request)
         return jsonify({"response": "Error: Please enter a message."}), 400 
 
-    input=msg
-    print(input)
-    response=rag_chain.invoke({"input":msg})
-    print("Response:",response["answer"])
-    
-    # CHANGE 3: The frontend needs JSON data for easy updates, not just a string.
-    # Return a JSON object with the response and status code 200 (OK).
+    # Ensure RAG initialization (fast no-op if already initialized)
+    try:
+        init_rag()
+    except Exception:
+        app.logger.exception("init_rag() failed during request")
+
+    if rag_chain is None:
+        return jsonify({"response": "Service initializing, try again shortly."}), 503
+
+    input = msg
+    app.logger.info("Received user input")
+    try:
+        response = rag_chain.invoke({"input": msg})
+    except Exception:
+        app.logger.exception("RAG invocation failed")
+        return jsonify({"response": "Internal server error"}), 500
+
+    app.logger.info("RAG responded")
     return jsonify({"response": response["answer"]}), 200
 
 
 
 if __name__=="__main__":
     # app.run(host="0.0.0.0",port=8080,debug=True)
-    app.run(host="0.0.0.0",debug=True)
+    port = int(os.environ.get("PORT", 8080))
+    app.run(host="0.0.0.0", port=port, debug=True)
+
+
+@app.route("/health")
+def health():
+    if rag_chain is None:
+        return ("", 503)
+    return ("", 200)
