@@ -13,36 +13,48 @@ app=Flask(__name__)
 
 load_dotenv()
 
-PINECONE_API_KEY=os.environ.get("PINECONE_API_KEY")
-OPENAI_API_KEY=os.environ.get("OPENAI_API_KEY")
+# Read API keys from environment and only set them if present (avoid setting None)
+PINECONE_API_KEY = os.environ.get("PINECONE_API_KEY")
+OPENAI_API_KEY = os.environ.get("OPENAI_API_KEY")
 
-os.environ["PINECONE_API_KEY"]=PINECONE_API_KEY
-os.environ["OPENAI_API_KEY"]=OPENAI_API_KEY
+if PINECONE_API_KEY:
+    os.environ["PINECONE_API_KEY"] = PINECONE_API_KEY
+if OPENAI_API_KEY:
+    os.environ["OPENAI_API_KEY"] = OPENAI_API_KEY
 
-embeddings=download_hugging_face_embeddings()
+# Lazy initialization to avoid long-running or failing work at import time
+embeddings = None
+docsearch = None
+retirver = None
+llm = None
+prompt = None
+question_answer_chain = None
+rag_chain = None
 
+def init_rag():
+    """Initialize embeddings, Pinecone index, retriever and chains on first use."""
+    global embeddings, docsearch, retirver, llm, prompt, question_answer_chain, rag_chain
+    if rag_chain is not None:
+        return
 
-index_name = "medibot"
+    embeddings = download_hugging_face_embeddings()
 
-# embed each chunk
-docsearch=Pinecone.from_existing_index(
-    index_name=index_name,
-    embedding=embeddings,
-)
+    index_name = "medibot"
+    docsearch = Pinecone.from_existing_index(
+        index_name=index_name,
+        embedding=embeddings,
+    )
 
-retirver=docsearch.as_retriever(search_type="similarity",search_kwargs={"k":3})
+    retirver = docsearch.as_retriever(search_type="similarity", search_kwargs={"k": 3})
 
+    llm = OpenAI(temperature=0.4, max_tokens=500)
+    prompt = ChatPromptTemplate.from_messages([
+        ("system", system_prompt),
+        ("human", "{input}")
+    ])
 
-llm=OpenAI(temperature=0.4,max_tokens=500)
-prompt=ChatPromptTemplate.from_messages(
-    [
-        ("system",system_prompt),
-        ("human","{input}")
-    ]
-)
-
-question_answer_chain=create_stuff_documents_chain(llm,prompt)
-rag_chain=create_retrieval_chain(retirver,question_answer_chain)
+    question_answer_chain = create_stuff_documents_chain(llm, prompt)
+    rag_chain = create_retrieval_chain(retirver, question_answer_chain)
 
 
 @app.route("/")
